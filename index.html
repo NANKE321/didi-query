@@ -147,38 +147,40 @@ function search(){
     if(revMin>0&&rev<revMin){passed=false}
     // 2. 完单档位奖励
     if(passed){
-      var tR=0,tNext='';
-      if(tier==='S+'){tR=rev>=18001?400:300;tNext=tR<400?'再+'+(18001-rev).toFixed(0)+'流水→档位奖励400元':''}
-      else if(tier==='S'){tR=rev>=30001?300:rev>=18001?200:100;tNext=tR<200?'再+'+(18001-rev).toFixed(0)+'流水→+100元':tR<300?'再+'+(30001-rev).toFixed(0)+'流水→+100元':''}
-      else if(tier==='A'){tR=rev>=17000?200:100;tNext=tR<200?'再+'+(17000-rev).toFixed(0)+'流水→+100元':''}
-      else if(tier==='B'){tR=50;tNext='升级A档可+50元'}
-      if(tR>0){rewards.push({name:'完单档位 '+tier,amount:tR,next:tNext});totalReward+=tR}else{passed=false}
+      var tR=0,tNext='',tPrev='';
+      var tierData={'S+':{orders:28,rev:[[30001,400],[18001,400],[0,300]]},'S':{orders:25,rev:[[30001,300],[26001,200],[22001,200],[18001,200],[0,100]]},'A':{orders:22,rev:[[17000,200],[0,100]]},'B':{orders:18,rev:[[0,50]]}};
+      var td=tierData[tier];
+      if(td){
+        for(var i=0;i<td.rev.length;i++){if(rev>=td.rev[i][0]){tR=td.rev[i][1];break}}
+        if(td.rev.length>1&&rev<td.rev[0][0]){tNext='再+'+(td.rev[0][0]-rev).toFixed(0)+'流水→'+td.rev[0][1]+'元'}
+      }
+      // 距离上一档位
+      var tierOrder={'S+':28,S:25,A:22,B:18,C:0};
+      var tierArr=['C','B','A','S','S+'];var ti=tierArr.indexOf(tier);
+      if(ti>=tierArr.length-1){tPrev='已达最高档'}
+      else if(ti>=0){var nextTier=tierArr[ti+1];var need=tierOrder[nextTier]-orders;
+        tPrev=need>0?'距'+nextTier+'还差'+need+'单':'已达'+nextTier+'单量标准'}
+      if(tR>0){rewards.push({name:'完单档位 '+tier+' (单量'+orders+')',amount:tR,next:tNext,prev:tPrev});totalReward+=tR}else{passed=false}
     }
     // 3. 高峰占比奖励（档位+流水区间+高峰占比三维查表）
     if(passed&&pr>=0.40){
       var pkR=0;
-      // S+ 高峰奖励表 [40-44%, 45-49%, 50-54%, 55%+]
-      var spk=[[100,300,500,800],[300,600,1400,2000],[600,1200,2000,3000],[1000,1700,2500,3500],[1800,2600,3500,4500],[2800,3000,5000,7500]];
-      // S 高峰奖励表
-      var s_pk=[[100,300,400,500],[300,600,800,1200],[500,900,1300,1800],[600,1100,1600,2100],[1000,1500,2000,2500],[1500,2500,3500,4500]];
-      // A 高峰奖励表
-      var apk=[[0,0,100,200],[0,200,300,400]];
-      var ri=rev>34001?5:rev>=30001?4:rev>=26001?3:rev>=22001?2:rev>=18001?1:0;
-      var ci=pr>=0.55?3:pr>=0.50?2:pr>=0.45?1:0;
-      if(tier==='S+'){pkR=spk[ri]?spk[ri][ci]||0:0}
-      else if(tier==='S'){pkR=s_pk[ri]?s_pk[ri][ci]||0:0}
-      else if(tier==='A'){ri=rev>=17000?1:0;pkR=apk[ri]?apk[ri][ci]||0:0}
-      else if(tier==='B'){pkR=pr>=0.55?200:pr>=0.50?100:0}
+      // 完整高峰奖励表 [S+, S, A]
+      var peakTable={
+        'S+':[[100,300,500,800],[300,600,1400,2000],[600,1200,2000,3000],[1000,1700,2500,3500],[1800,2600,3500,4500],[2800,3000,5000,7500]],
+        'S':[[100,300,400,500],[300,600,800,1200],[500,900,1300,1800],[600,1100,1600,2100],[1000,1500,2000,2500],[1500,2500,3500,4500]],
+        'A':[[0,0,100,200],[0,200,300,400]]
+      };
+      var pt=peakTable[tier];
+      if(pt){
+        var ri=tier==='A'?(rev>=17000?1:0):(rev>34001?5:rev>=30001?4:rev>=26001?3:rev>=22001?2:rev>=18001?1:0);
+        var ci=pr>=0.55?3:pr>=0.50?2:pr>=0.45?1:0;
+        pkR=(pt[ri]&&pt[ri][ci])?pt[ri][ci]:0;
+      }
       if(pkR>0){
-        // 计算距离下一档
-        var pkNext='',nextRi,nextCi,nextVal;
-        // 先看高峰占比能否提升
-        if(ci<3){nextCi=ci+1;var pcts=[45,50,55];nextVal=tier==='S+'?spk[ri][nextCi]:tier==='S'?s_pk[ri][nextCi]:0;
-          if(nextVal&&nextVal>pkR){pkNext='高峰再+'+(( [0.45,0.50,0.55][ci]-pr)*100).toFixed(1)+'%→奖励'+nextVal+'元(+'+(nextVal-pkR)+')'}}
-        // 再看流水能否提升
-        if(!pkNext&&ri<5){nextRi=ri+1;var revs=[18001,22001,26001,30001,34001];
-          nextVal=tier==='S+'?spk[nextRi][ci]:tier==='S'?s_pk[nextRi][ci]:0;
-          if(nextVal&&nextVal>pkR){pkNext='流水再+'+(revs[ri]-rev).toFixed(0)+'→奖励'+nextVal+'元(+'+(nextVal-pkR)+')'}}
+        var pkNext='',revs=[18001,22001,26001,30001,34001];
+        if(ci<3&&pt[ri]){var nc=ci+1;var nv=pt[ri][nc];if(nv&&nv>pkR){pkNext='高峰再+'+(([0.45,0.50,0.55][ci]-pr)*100).toFixed(1)+'%→奖励'+nv+'元(+'+(nv-pkR)+')'}}
+        if(!pkNext&&ri<pt.length-1){var nr=pt[ri+1];if(nr){var nv=nr[ci];if(nv&&nv>pkR){pkNext='流水再+'+(revs[ri]-rev).toFixed(0)+'→奖励'+nv+'元(+'+(nv-pkR)+')'}}}
         if(!pkNext){pkNext='已达当前最高'}
         rewards.push({name:'高峰占比 '+((pr*100).toFixed(1)+'%')+' · 流水'+rev.toFixed(0),amount:pkR,next:pkNext});totalReward+=pkR;
       }else{passed=false}
@@ -204,7 +206,7 @@ function search(){
   if(rewards.length>0){
     secEl.style.display='';
     var steps=['①流水达标','②完单档位','③高峰占比','④快优占比','⑤服务分'];
-    listEl.innerHTML=rewards.map(function(r,i){var nextHtml=r.next?'<div style="font-size:11px;color:#f59e0b;margin-top:2px">💡 '+r.next+'</div>':'';return '<div style="padding:10px 12px;margin-bottom:6px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:#333">'+(steps[i]||'')+' '+r.name+'</span><span style="font-size:16px;font-weight:700;color:#22c55e">+'+r.amount+'元</span></div>'+nextHtml+'</div>'}).join('');
+    listEl.innerHTML=rewards.map(function(r,i){var nextHtml=r.next?'<div style="font-size:11px;color:#f59e0b;margin-top:2px">💡 '+r.next+'</div>':'';var prevHtml=r.prev?'<div style="font-size:11px;color:#3b82f6;margin-top:2px">📊 '+r.prev+'</div>':'';return '<div style="padding:10px 12px;margin-bottom:6px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:#333">'+(steps[i]||'')+' '+r.name+'</span><span style="font-size:16px;font-weight:700;color:#22c55e">+'+r.amount+'元</span></div>'+prevHtml+nextHtml+'</div>'}).join('');
     totEl.textContent=totalReward+'元';
   }else{
     secEl.style.display='none';
