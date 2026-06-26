@@ -112,20 +112,21 @@ function search(){
   document.getElementById('rFl').textContent=d['你总基础流水']||'-';
   document.getElementById('rYf').textContent=d['昨日基础流水']||'-';
   var ti=parseFloat(d['你总计费时长'])||0;
-  var th=parseFloat(d['当前入围门槛'])||0;
+  var bd=parseInt(d['本月绑车天数'])||0;var rd=parseInt(d['本月剩余天数'])||0;
+  var fullDays=bd+rd;var monthlyTarget=5.5*fullDays;
   var tiEl=document.getElementById('rTi');
-  if(th>0&&ti>=th){tiEl.textContent='✅ 已完成';tiEl.className='vl g'}else{tiEl.textContent=d['你总计费时长']||'-';tiEl.className='vl'}
+  if(ti>=monthlyTarget){tiEl.textContent='✅ 已完成 '+ti+'h';tiEl.className='vl g'}else{tiEl.textContent=ti+'h / 目标'+monthlyTarget.toFixed(1)+'h';tiEl.className='vl'}
   document.getElementById('rYt').textContent=d['昨日计费时长']||'-';
   document.getElementById('rTh').textContent=d['当前入围门槛']||'-';
   var df=d['当前入围差额'];
   var dfEl=document.getElementById('rDf');
   var dfWrap=dfEl.closest('.di');
-  if(df!==''&&df!==undefined){var dn=parseFloat(df);if(dn>0){dfWrap.style.display='none'}else{dfWrap.style.display='';dfEl.textContent=df;dfEl.className='vl r'}}else{dfWrap.style.display='';dfEl.textContent='-';dfEl.className='vl'}
-  var rd=parseInt(d['本月剩余天数'])||0;
-  var mdEl=document.getElementById('rMd');
-  if(th>0&&ti>=th){mdEl.textContent='✅ 已完成';mdEl.className='vl g';mdEl.style=''}else if(th>0&&rd>0){var need=Math.max(0,(th-ti)/rd);mdEl.textContent=need.toFixed(2);mdEl.style='color:#dc2626;font-weight:700';mdEl.className='vl'}else{mdEl.textContent=d['剩余每天最低计费时长']||'-';mdEl.style='color:#dc2626;font-weight:700';mdEl.className='vl'}
+  if(df!==''&&df!==undefined){var dn=parseFloat(df);dfWrap.style.display='';if(dn>0){dfEl.textContent='✅ 已完成';dfEl.className='vl g'}else{dfEl.textContent=df;dfEl.className='vl'}}else{dfWrap.style.display='';dfEl.textContent='-';dfEl.className='vl'}
+  var mdEl=document.getElementById('rMd');var mdWrap=mdEl.closest('.di');
+  var dfPassed=df!==''&&df!==undefined&&parseFloat(df)>0;
+  if(ti>=monthlyTarget||dfPassed){mdWrap.style.display='none'}else if(rd>0){mdWrap.style.display='';var remain=Math.max(0,monthlyTarget-ti);var need=remain/rd;mdEl.textContent=need.toFixed(2)+'h/天 (剩'+remain.toFixed(1)+'h)';mdEl.style='color:#dc2626;font-weight:700';mdEl.className='vl'}else{mdWrap.style.display='';mdEl.textContent='-';mdEl.style='color:#dc2626;font-weight:700';mdEl.className='vl'}
   document.getElementById('rBd').textContent=d['本月绑车天数']||'-';
-  document.getElementById('rSc').textContent=d['日均服务分']||'-';
+  var scVal=parseFloat(d['日均服务分'])||0;var scEl=document.getElementById('rSc');scEl.textContent=d['日均服务分']||'-';if(scVal>0&&scVal<90){scEl.style='color:#dc2626;font-weight:700';var stEl=document.getElementById('rSt');if(d['当前是否入围']==='1'){stEl.textContent='❌ 服务分不足';stEl.className='vl r'}}else{scEl.style=''}
   var pr=d['工作日高峰计费占比≥45%'];
   var prEl=document.getElementById('rPr');
   if(pr!==''&&pr!==undefined){var pn=parseFloat(pr);prEl.textContent=(pn*100).toFixed(1)+'%';prEl.className='vl '+(pn>=0.45?'g':'r')}else{prEl.textContent='-'}
